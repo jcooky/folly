@@ -447,14 +447,14 @@ class Empty : public GenImpl<Value, Empty<Value>> {
 };
 
 template <class Value>
-class SingleReference : public GenImpl<Value&, SingleReference<Value>> {
+class SingleLValueReference : public GenImpl<Value&, SingleLValueReference<Value>> {
   static_assert(
       !std::is_reference<Value>::value,
-      "SingleReference requires non-ref types");
+      "SingleLValueReference requires non-ref types");
   Value* ptr_;
 
  public:
-  explicit SingleReference(Value& ref) : ptr_(&ref) {}
+  explicit SingleLValueReference(Value& ref) : ptr_(&ref) {}
 
   template <class Handler>
   bool apply(Handler&& handler) const {
@@ -464,6 +464,30 @@ class SingleReference : public GenImpl<Value&, SingleReference<Value>> {
   template <class Body>
   void foreach(Body&& body) const {
     body(*ptr_);
+  }
+
+  // One value, so finite
+  static constexpr bool infinite = false;
+};
+
+template <class Value>
+class SingleRValueReference : public GenImpl<Value&, SingleRValueReference<Value>> {
+  static_assert(
+      !std::is_reference<Value>::value and std::is_move_constructible<Value>::value,
+      "SingleRValueReference requires non-ref types and a moving constructor");
+  Value value_;
+
+ public:
+  explicit SingleRValueReference(Value&& ref) : value_(std::move(ref)) {}
+
+  template <class Handler>
+  bool apply(Handler&& handler) const {
+    return handler(std::move(value_));
+  }
+
+  template <class Body>
+  void foreach(Body&& body) const {
+    body(std::move(value_));
   }
 
   // One value, so finite
